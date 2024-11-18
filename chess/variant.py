@@ -1088,6 +1088,52 @@ class CrazyhouseBoard(chess.Board):
         return status
 
 
+class FourPawnsVsKings(chess.Board):
+    """
+    4 Pawns vs Kings variant:
+    - Standard chess rules apply
+    - Each side has a king and three pawns
+    - Win by:
+        1. Standard chess win rules
+        2. Getting a pawn to the opposite end
+    """
+    
+    aliases = ["4pawnsvskings", "fourpawnsvskings"]
+    uci_variant = "4pawnsvskings"
+    starting_fen = "3k4/2ppp3/8/8/8/8/3PPP2/4K3 w - - 0 1"
+
+    def __init__(self):
+        super().__init__(fen=type(self).starting_fen)
+
+    def reset(self) -> None:
+        self.set_fen(type(self).starting_fen)
+
+    def _is_pawn_at_promotion(self, color: chess.Color) -> bool:
+        """Helper method to check if the given color has a pawn at promotion rank."""
+        if not self.move_stack:
+            return False
+            
+        last_move = self.move_stack[-1]
+        to_square = last_move.to_square
+        moved_piece = self.piece_type_at(to_square)
+        
+        if moved_piece == chess.PAWN:
+            to_rank = chess.square_rank(to_square)
+            # Check if pawn reached the opposite end
+            return (color == chess.WHITE and to_rank == 7) or (color == chess.BLACK and to_rank == 0)
+                
+        return False
+
+    def is_variant_win(self) -> bool:
+        return self._is_pawn_at_promotion(self.turn)
+
+    def is_variant_loss(self) -> bool:
+        return self._is_pawn_at_promotion(not self.turn)
+
+    def is_variant_end(self) -> bool:
+        return self._is_pawn_at_promotion(chess.WHITE) or self._is_pawn_at_promotion(chess.BLACK)
+
+
 VARIANTS: List[Type[chess.Board]] = [
     chess.Board,
     SuicideBoard, GiveawayBoard, AntichessBoard,
@@ -1097,6 +1143,7 @@ VARIANTS: List[Type[chess.Board]] = [
     HordeBoard,
     ThreeCheckBoard,
     CrazyhouseBoard,
+    FourPawnsVsKings,
 ]
 
 
@@ -1109,3 +1156,4 @@ def find_variant(name: str) -> Type[chess.Board]:
         if any(alias.lower() == name.lower() for alias in variant.aliases):
             return variant
     raise ValueError(f"unsupported variant: {name}")
+
